@@ -1,3 +1,4 @@
+from ast import JoinedStr
 from crypt import methods
 import os
 from tokenize import endpats
@@ -63,10 +64,13 @@ def create_app(test_config=None):
     def get_categories():
         selections = Category.query.order_by(Category.id).all()
         formatted_selections = [selection.format() for selection in selections]
-        return jsonify({
-            'success': True,
-            'categories': formatted_selections
-        })
+        if len(formatted_selections) == 0:
+            abort(404)
+        else:
+            return jsonify({
+                'success': True,
+                'categories': formatted_selections
+            })
 
 
     """
@@ -88,13 +92,15 @@ def create_app(test_config=None):
         formatted_categories = [category.format() for category in categories]
         current_categories = paginate_current_category(request, questions)
         all_current_questions = paginate_questions(request, questions)
-        
-        return jsonify({
-            'questions': all_current_questions,
-            'total_questions': len(questions),
-            'categories': formatted_categories,
-            'current_category': current_categories
-        })
+        if len(all_current_questions) == 0:
+            abort(404)
+        else:
+            return jsonify({
+                'questions': all_current_questions,
+                'total_questions': len(questions),
+                'categories': formatted_categories,
+                'current_category': current_categories
+            })
 
 
     """
@@ -106,12 +112,17 @@ def create_app(test_config=None):
     """
     @app.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
-        selected_question = Question.query.filter(Question.id == question_id).one_or_none()
-        selected_question.delete()
-
-        return jsonify({
-            'success': True
-        })
+        try:
+            selected_question = Question.query.filter(Question.id == question_id).one_or_none()
+            if len(selected_question) == 0:
+                abort(404)
+            else:
+                selected_question.delete()
+                return jsonify({
+                    'success': True
+                })
+        except:
+            abort(422)
 
 
 
@@ -128,16 +139,31 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['POST'])
     def add_question():
         data = request.get_json()
-        question = data['question']
-        answer = data['answer']
-        category = data['category']
-        difficulty = data['difficulty']
-        new_question = Question(question, answer, category, difficulty)
-        new_question.insert()
+        search_term = data['searchTerm']
+        try:
+            if search_term:
+                matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
+                matched_result_formatted = paginate_questions(request, matched_result)
+                matched_result_category = paginate_current_category(request, matched_result)
+                return jsonify({
+                    'success': True,
+                    'questions': matched_result_formatted,
+                    'total_questions': len(matched_result),
+                    'current_category': matched_result_category
+                })
+            else:
+                question = data['question']
+                answer = data['answer']
+                category = data['category']
+                difficulty = data['difficulty']
+                new_question = Question(question, answer, category, difficulty)
+                new_question.insert()
 
-        return jsonify({
-            'success': True
-        })
+                return jsonify({
+                    'success': True
+                })
+        except:
+            abort(422)
     
 
     """
@@ -150,21 +176,7 @@ def create_app(test_config=None):
     only question that include that string within their question.
     Try using the word "title" to start.
     """
-    @app.route('/questions', methods=['POST'])
-    def add_question():
-        data = request.get_json()
-        search_term = data['searchTerm']
-        matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
-
-        matched_result_formatted = paginate_questions(request, matched_result)
-        matched_result_category = paginate_current_category(request, matched_result)
-
-        return jsonify({
-            'success': True,
-            'questions': matched_result_formatted,
-            'total_questions': len(matched_result),
-            'current_category': matched_result_category
-        })
+    # This has been implemented in add_question function above
 
     """
     @TODO:
@@ -174,6 +186,21 @@ def create_app(test_config=None):
     categories in the left column will cause only questions of that
     category to be shown.
     """
+
+    @app.route('/categories/<int:category_id>/questions')
+    def get_category_based_questions(category_id):
+        cat_seltd_questions = Question.query.filter(Question.category == category_id).all()
+        formatted_cat_seltd_questions = paginate_questions(request, cat_seltd_questions)
+        if len(formatted_cat_seltd_questions) == 0:
+            abort(404)
+        else:
+            current_category = paginate_current_category(request, cat_seltd_questions)
+
+            return jsonify({
+                'questions': formatted_cat_seltd_questions,
+                'total_questions': len(cat_seltd_questions),
+                'current_category': current_category
+            })
 
     """
     @TODO:
@@ -186,12 +213,86 @@ def create_app(test_config=None):
     one question at a time is displayed, the user is allowed to answer
     and shown whether they were correct or not.
     """
+    @app.route('/quizzes', methods=['POST'])
+    def play_quizzes():
+        data = request.get_json()
+        previous_questions = data['previous_questions']
+        quiz_category = data['quiz_category']
+        unseen_questions = []
+        try:
+            if quiz_category:
+                category = Category.query.filter(Category.type == quiz_category)
+                all_category_based_questions = Question.query.filter(Question.category == category.id).all()
+                for question in all_category_based_questions:
+                    if question['question'] not in previous_questions:
+                        unseen_questions.append(question)
+            else:
+                all_questions = Question.query.all()
+                for question in all_questions:
+                    if question['question'] not in previous_questions:
+                        unseen_questions.append(question)
+            
+            formatted_unseen_questions = paginate_questions(request, unseen_questions)
+
+            # Randomly select a question in the formatted_unseen_questions
+            new_random_question = random.choice(formatted_unseen_questions)
+
+            return jsonify({
+                'success': True,
+                'question': new_random_question
+            })
+        except:
+            abort(400)
 
     """
     @TODO:
     Create error handlers for all expected errors
     including 404 and 422.
     """
+    @app.errorhandler(404)
+    def not_found(error):
+        return(
+            jsonify({
+                'success': False,
+                'error': 404,
+                'message': 'the requested resource not found.'
+            }),
+            404
+        )
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return(
+            jsonify({
+                'success': False,
+                'error': 422,
+                'message': 'operation can not be processed'
+            }),
+            422
+        )
+
+    @app.errorhandler(400)
+    def bad_syntax(error):
+        return(
+            jsonify({
+                'success': False,
+                'error': 400,
+                'message': 'bad request / bad syntax'
+            }),
+            400
+        )
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return(
+            jsonify({
+                'success': False,
+                'error': 500,
+                'message': 'Internal server error.'
+            }),
+            500
+        )
+
 
     return app
 

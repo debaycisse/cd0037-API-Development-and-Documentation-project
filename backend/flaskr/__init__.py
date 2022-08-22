@@ -1,4 +1,7 @@
+from crypt import methods
 import os
+from tokenize import endpats
+from unicodedata import category
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -8,6 +11,30 @@ from models import setup_db, Question, Category
 
 QUESTIONS_PER_PAGE = 10
 
+def paginate_questions(request, dataset):
+    page = request.args.get('page', 1, type=int)
+    start_page = (page -1) * QUESTIONS_PER_PAGE
+    end_page = start_page + QUESTIONS_PER_PAGE
+
+    current_dataset = [data.format() for data in dataset]
+    return current_dataset[start_page:end_page]
+
+def paginate_current_category(request, questions):
+    page = request.args.get('page', 1, type=int)
+    start_page = (page -1) * QUESTIONS_PER_PAGE
+    end_page = start_page + QUESTIONS_PER_PAGE
+
+    categories = [question.category for question in questions]
+
+    category_names = []
+        
+    for category in categories:
+        category_names.append(Category.query.get(category).type)
+
+    return category_names[start_page:end_page]
+
+
+
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
@@ -16,16 +43,30 @@ def create_app(test_config=None):
     """
     @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
     """
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     """
     @TODO: Use the after_request decorator to set Access-Control-Allow
     """
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Headers','Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods','GET,POST,DELETE')
+        return response
 
     """
     @TODO:
     Create an endpoint to handle GET requests
     for all available categories.
     """
+    @app.route('/categories')
+    def get_categories():
+        selections = Category.query.order_by(Category.id).all()
+        formatted_selections = [selection.format() for selection in selections]
+        return jsonify({
+            'success': True,
+            'categories': formatted_selections
+        })
 
 
     """
@@ -40,6 +81,21 @@ def create_app(test_config=None):
     ten questions per page and pagination at the bottom of the screen for three pages.
     Clicking on the page numbers should update the questions.
     """
+    @app.route('/questions')
+    def get_questions():
+        questions = Question.query.order_by(Question.id).all()
+        categories = Category.query.order_by(Category.id).all()
+        formatted_categories = [category.format() for category in categories]
+        current_categories = paginate_current_category(request, questions)
+        all_current_questions = paginate_questions(request, questions)
+        
+        return jsonify({
+            'questions': all_current_questions,
+            'total_questions': len(questions),
+            'categories': formatted_categories,
+            'current_category': current_categories
+        })
+
 
     """
     @TODO:
@@ -48,6 +104,16 @@ def create_app(test_config=None):
     TEST: When you click the trash icon next to a question, the question will be removed.
     This removal will persist in the database and when you refresh the page.
     """
+    @app.route('/questions/<int:question_id>', methods=['DELETE'])
+    def delete_question(question_id):
+        selected_question = Question.query.filter(Question.id == question_id).one_or_none()
+        selected_question.delete()
+
+        return jsonify({
+            'success': True
+        })
+
+
 
     """
     @TODO:
@@ -59,6 +125,20 @@ def create_app(test_config=None):
     the form will clear and the question will appear at the end of the last page
     of the questions list in the "List" tab.
     """
+    @app.route('/questions', methods=['POST'])
+    def add_question():
+        data = request.get_json()
+        question = data['question']
+        answer = data['answer']
+        category = data['category']
+        difficulty = data['difficulty']
+        new_question = Question(question, answer, category, difficulty)
+        new_question.insert()
+
+        return jsonify({
+            'success': True
+        })
+    
 
     """
     @TODO:
@@ -70,6 +150,21 @@ def create_app(test_config=None):
     only question that include that string within their question.
     Try using the word "title" to start.
     """
+    @app.route('/questions', methods=['POST'])
+    def add_question():
+        data = request.get_json()
+        search_term = data['searchTerm']
+        matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
+
+        matched_result_formatted = paginate_questions(request, matched_result)
+        matched_result_category = paginate_current_category(request, matched_result)
+
+        return jsonify({
+            'success': True,
+            'questions': matched_result_formatted,
+            'total_questions': len(matched_result),
+            'current_category': matched_result_category
+        })
 
     """
     @TODO:

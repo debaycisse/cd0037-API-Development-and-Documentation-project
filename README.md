@@ -31,6 +31,8 @@ The [backend](./backend/README.md) directory contains a partially completed Flas
 
 > View the [Backend README](./backend/README.md) for more details.
 
+> View the [API endpoint README](./backend/API.md) for using the endpoints.
+
 ### Frontend
 
 The [frontend](./frontend/README.md) directory contains a complete React frontend to consume the data from the Flask server. If you have prior experience building a frontend application, you should feel free to edit the endpoints as you see fit for the backend you design. If you do not have prior experience building a frontend application, you should read through the frontend code before starting and make notes regarding:

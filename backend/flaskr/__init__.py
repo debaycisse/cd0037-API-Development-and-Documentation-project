@@ -34,6 +34,13 @@ def paginate_current_category(request, questions):
 
     return category_names[start_page:end_page]
 
+def paginate_category(request, categories):
+    page = request.args.get('page', 1, type=int)
+    start_page = (page - 1) * QUESTIONS_PER_PAGE
+    end_page = start_page + QUESTIONS_PER_PAGE
+    formatted_categories = [category.format() for category in categories]
+
+    return formatted_categories[start_page:end_page]
 
 
 def create_app(test_config=None):
@@ -63,7 +70,7 @@ def create_app(test_config=None):
     @app.route('/categories')
     def get_categories():
         selections = Category.query.order_by(Category.id).all()
-        formatted_selections = [selection.format() for selection in selections]
+        formatted_selections = paginate_category(request, selections)
         if len(formatted_selections) == 0:
             abort(404)
         else:

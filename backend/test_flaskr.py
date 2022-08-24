@@ -25,11 +25,7 @@ class TriviaTestCase(unittest.TestCase):
             # create all tables
             self.db.create_all()
 
-        self.new_question = {
-            "question": "What is the name of the smallest planet", 
-            "answer": "Mercury", 
-            "category": "3", 
-            "difficulty": "3"}
+        self.new_question = {"question": "What is the name of the smallest planet", "answer": "Mercury", "category": 3, "difficulty": 3}
 
     def tearDown(self):
         """Executed after reach test"""
@@ -41,23 +37,23 @@ class TriviaTestCase(unittest.TestCase):
     """
     def test_get_paginated_categories(self):
         res = self.client().get('/categories')
-        data = json.load(res.data)
+        data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 200)
+        self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertTrue(data['categories'])
 
     def test_404_retrieving_wrongly_spelt_category(self):
         res = self.client().get('/categories/')
-        data = json.load(res.data)
-        self.assertEqual(self.status_code, 404)
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 404)
         self.assertEqual(data['success'], False)
         self.assertTrue(data['message'], "the requested resource not found.")
 
     def test_404_retrieving_unavailable_category(self):
         res = self.client().get('/categories?page=1000')
-        data = json.load(res.data)
-        self.assertEqual(self.status_code, 404)
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 404)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "the requested resource not found.")
 
@@ -67,7 +63,7 @@ class TriviaTestCase(unittest.TestCase):
         res = self.client().get('/questions')
         data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 200)
+        self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertTrue(data['total_questions'])
         self.assertTrue(len(data['questions']))
@@ -76,31 +72,23 @@ class TriviaTestCase(unittest.TestCase):
         res = self.client().get('/questions?page=1000')
         data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 404)
+        self.assertEqual(res.status_code, 404)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "the requested resource not found.")
 
     
-    def test_delete_question(self):
-        res = self.client().delete('/questions/3')
+    # def test_delete_question(self):
+    #     res = self.client().delete('/questions/3')
+    #     data = json.loads(res.data)
+
+    #     self.assertEqual(res.status_code, 200)
+    #     self.assertEqual(data['success'], True)
+
+    def test_422_deletion_an_unavailable_question(self):
+        res = self.client().delete('/questions/1000')
         data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 200)
-        self.assertEqual(data['success'], True)
-    
-    def test_deleting_inexisting_question(self):
-        res = self.client().delete('/questions/3')
-        data = json.loads(res.data)
-
-        self.assertEqual(self.status_code, 404)
-        self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], "the requested resource not found.")
-
-    def test_422_deletion_with_wrong_endpoint_path(self):
-        res = self.client().delete('/questions/delete/3')
-        data = json.loads(res.data)
-
-        self.assertEqual(self.status_code, 422)
+        self.assertEqual(res.status_code, 422)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "operation can not be processed")
 
@@ -109,19 +97,68 @@ class TriviaTestCase(unittest.TestCase):
         res = self.client().post('/questions', json=self.new_question)
         data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 200)
+        self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
 
     def test_adding_new_question_with_wrong_syntax_or_missing_data(self):
         res = self.client().post('/questions', json={"question":"what is the name of the smallest planet", "answer": "Mercury"})
         data = json.loads(res.data)
 
-        self.assertEqual(self.status_code, 422)
+        self.assertEqual(res.status_code, 422)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "operation can not be processed")
 
     
+    def test_searching_for_a_question(self):
+        res = self.client().post('/questions', json={"searchTerm":"title"})
+        data = json.loads(res.data)
 
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+
+    def test_searching_with_empty_result_or_404(self):
+        res = self.client().post('/questions', json={"searchTerm":"Raupe"})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "the requested resource not found.")
+
+
+    def test_retrieve_list_of_questions_based_on_given_category(self):
+        res = self.client().get('categories/5/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertTrue(data['total_questions'])
+        self.assertTrue(data['current_category'])
+
+    def test_requesting_for_questions_in_an_inexisting_category(self):
+        res = self.client().get('categories/1000/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "the requested resource not found.")
+
+    def test_playing_quiz(self):
+        res = self.client().post('/quizzes',json={})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['question'])
+
+    def test_500_sending_bad_request_playing_quiz(self):
+        res = self.client().post('/quizzes',json={"previous_ques":[], "quiz_categ":""})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 500)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "Internal server error.")
 
 
 

@@ -1,6 +1,7 @@
 from ast import JoinedStr
 from crypt import methods
 import os
+from tkinter.tix import Tree
 from tokenize import endpats
 from unicodedata import category
 from flask import Flask, request, abort, jsonify
@@ -106,7 +107,8 @@ def create_app(test_config=None):
                 'questions': all_current_questions,
                 'total_questions': len(questions),
                 'categories': formatted_categories,
-                'current_category': current_categories
+                'current_category': current_categories,
+                'success': True
             })
 
 
@@ -121,13 +123,14 @@ def create_app(test_config=None):
     def delete_question(question_id):
         try:
             selected_question = Question.query.filter(Question.id == question_id).one_or_none()
-            if len(selected_question) == 0:
+            
+            if selected_question is None:
                 abort(404)
-            else:
-                selected_question.delete()
-                return jsonify({
-                    'success': True
-                })
+            
+            selected_question.delete()
+            return jsonify({
+                'success': True
+            })
         except:
             abort(422)
 
@@ -146,18 +149,21 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['POST'])
     def add_question():
         data = request.get_json()
-        search_term = data['searchTerm']
+        search_term = data.get('searchTerm', None)
         try:
             if search_term:
                 matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
-                matched_result_formatted = paginate_questions(request, matched_result)
-                matched_result_category = paginate_current_category(request, matched_result)
-                return jsonify({
-                    'success': True,
-                    'questions': matched_result_formatted,
-                    'total_questions': len(matched_result),
-                    'current_category': matched_result_category
-                })
+                if matched_result is None:
+                    abort(404)
+                else:
+                    matched_result_formatted = paginate_questions(request, matched_result)
+                    matched_result_category = paginate_current_category(request, matched_result)
+                    return jsonify({
+                        'success': True,
+                        'questions': matched_result_formatted,
+                        'total_questions': len(matched_result),
+                        'current_category': matched_result_category
+                    })
             else:
                 question = data['question']
                 answer = data['answer']
@@ -197,16 +203,17 @@ def create_app(test_config=None):
     @app.route('/categories/<int:category_id>/questions')
     def get_category_based_questions(category_id):
         cat_seltd_questions = Question.query.filter(Question.category == category_id).all()
-        formatted_cat_seltd_questions = paginate_questions(request, cat_seltd_questions)
-        if len(formatted_cat_seltd_questions) == 0:
+        if cat_seltd_questions is None:
             abort(404)
         else:
+            formatted_cat_seltd_questions = paginate_questions(request, cat_seltd_questions)
             current_category = paginate_current_category(request, cat_seltd_questions)
 
             return jsonify({
                 'questions': formatted_cat_seltd_questions,
                 'total_questions': len(cat_seltd_questions),
-                'current_category': current_category
+                'current_category': current_category,
+                'success': True
             })
 
     """
@@ -223,8 +230,8 @@ def create_app(test_config=None):
     @app.route('/quizzes', methods=['POST'])
     def play_quizzes():
         data = request.get_json()
-        previous_questions = data['previous_questions']
-        quiz_category = data['quiz_category']
+        previous_questions = data.get('previous_questions', [])
+        quiz_category = data.get('quiz_category', None)
         unseen_questions = []
         try:
             if quiz_category:
@@ -249,7 +256,7 @@ def create_app(test_config=None):
                 'question': new_random_question
             })
         except:
-            abort(400)
+            abort(500)
 
     """
     @TODO:

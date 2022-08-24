@@ -24,7 +24,13 @@ class TriviaTestCase(unittest.TestCase):
             self.db.init_app(self.app)
             # create all tables
             self.db.create_all()
-    
+
+        self.new_question = {
+            "question": "What is the name of the smallest planet", 
+            "answer": "Mercury", 
+            "category": "3", 
+            "difficulty": "3"}
+
     def tearDown(self):
         """Executed after reach test"""
         pass
@@ -33,7 +39,7 @@ class TriviaTestCase(unittest.TestCase):
     TODO
     Write at least one test for each test for successful operation and for expected errors.
     """
-    def test_get_categories(self):
+    def test_get_paginated_categories(self):
         res = self.client().get('/categories')
         data = json.load(res.data)
 
@@ -46,16 +52,14 @@ class TriviaTestCase(unittest.TestCase):
         data = json.load(res.data)
         self.assertEqual(self.status_code, 404)
         self.assertEqual(data['success'], False)
-        self.assertTrue(data['message'])
+        self.assertTrue(data['message'], "the requested resource not found.")
 
-    def test_404_retrieving_unavailable(self):
+    def test_404_retrieving_unavailable_category(self):
         res = self.client().get('/categories?page=1000')
         data = json.load(res.data)
         self.assertEqual(self.status_code, 404)
         self.assertEqual(data['success'], False)
-        self.assertTrue(data['message'])
-
-
+        self.assertEqual(data['message'], "the requested resource not found.")
 
 
 
@@ -67,6 +71,65 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], True)
         self.assertTrue(data['total_questions'])
         self.assertTrue(len(data['questions']))
+
+    def test_404_retrieving_beyond_available_page(self):
+        res = self.client().get('/questions?page=1000')
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "the requested resource not found.")
+
+    
+    def test_delete_question(self):
+        res = self.client().delete('/questions/3')
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 200)
+        self.assertEqual(data['success'], True)
+    
+    def test_deleting_inexisting_question(self):
+        res = self.client().delete('/questions/3')
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "the requested resource not found.")
+
+    def test_422_deletion_with_wrong_endpoint_path(self):
+        res = self.client().delete('/questions/delete/3')
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 422)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "operation can not be processed")
+
+
+    def test_adding_new_question(self):
+        res = self.client().post('/questions', json=self.new_question)
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 200)
+        self.assertEqual(data['success'], True)
+
+    def test_adding_new_question_with_wrong_syntax_or_missing_data(self):
+        res = self.client().post('/questions', json={"question":"what is the name of the smallest planet", "answer": "Mercury"})
+        data = json.loads(res.data)
+
+        self.assertEqual(self.status_code, 422)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], "operation can not be processed")
+
+    
+
+
+
+
+
+
+
+
+
 
 
 # Make the tests conveniently executable

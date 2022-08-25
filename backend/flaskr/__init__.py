@@ -153,7 +153,7 @@ def create_app(test_config=None):
         try:
             if search_term:
                 matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
-                if matched_result is None:
+                if len(matched_result) == 0:
                     abort(404)
                 else:
                     matched_result_formatted = paginate_questions(request, matched_result)
@@ -176,7 +176,7 @@ def create_app(test_config=None):
                     'success': True
                 })
         except:
-            abort(422)
+            abort(404)
     
 
     """
@@ -203,7 +203,7 @@ def create_app(test_config=None):
     @app.route('/categories/<int:category_id>/questions')
     def get_category_based_questions(category_id):
         cat_seltd_questions = Question.query.filter(Question.category == category_id).all()
-        if cat_seltd_questions is None:
+        if len(cat_seltd_questions) == 0:
             abort(404)
         else:
             formatted_cat_seltd_questions = paginate_questions(request, cat_seltd_questions)
@@ -233,23 +233,29 @@ def create_app(test_config=None):
         previous_questions = data.get('previous_questions', [])
         quiz_category = data.get('quiz_category', None)
         unseen_questions = []
+        all_category_based_questions = None
+        formatted_all_category_based_questions = None
         try:
-            if quiz_category:
-                category = Category.query.filter(Category.type == quiz_category)
-                all_category_based_questions = Question.query.filter(Question.category == category.id).all()
-                for question in all_category_based_questions:
-                    if question['question'] not in previous_questions:
+            if quiz_category is not None:
+                all_category_based_questions = Question.query.filter(Question.category == quiz_category).all()
+                
+                formatted_all_category_based_questions = [question.format() for question in all_category_based_questions]
+
+                for question in formatted_all_category_based_questions:
+                    if question not in previous_questions:
                         unseen_questions.append(question)
             else:
                 all_questions = Question.query.all()
-                for question in all_questions:
-                    if question['question'] not in previous_questions:
+
+                formatted_all_questions = [question.format() for question in all_questions]
+
+                for question in formatted_all_questions:
+                    if question not in previous_questions:
                         unseen_questions.append(question)
             
-            formatted_unseen_questions = paginate_questions(request, unseen_questions)
 
             # Randomly select a question in the formatted_unseen_questions
-            new_random_question = random.choice(formatted_unseen_questions)
+            new_random_question = random.choice(unseen_questions)
 
             return jsonify({
                 'success': True,

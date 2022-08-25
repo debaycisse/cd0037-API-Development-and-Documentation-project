@@ -127,7 +127,7 @@ class TriviaTestCase(unittest.TestCase):
 
 
     def test_retrieve_list_of_questions_based_on_given_category(self):
-        res = self.client().get('categories/5/questions')
+        res = self.client().get('categories/2/questions')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -145,7 +145,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['message'], "the requested resource not found.")
 
     def test_playing_quiz(self):
-        res = self.client().post('/quizzes',json={})
+        res = self.client().post('/quizzes', json={"previous_questions":[]})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -153,7 +153,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data['question'])
 
     def test_500_sending_bad_request_playing_quiz(self):
-        res = self.client().post('/quizzes',json={"previous_ques":[], "quiz_categ":""})
+        res = self.client().post('/quizzes',json={"previous_questions":"what is your name"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 500)

@@ -77,12 +77,12 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['message'], "the requested resource not found.")
 
     
-    # def test_delete_question(self):
-    #     res = self.client().delete('/questions/3')
-    #     data = json.loads(res.data)
+    def test_delete_question(self):
+        res = self.client().delete('/questions/3')
+        data = json.loads(res.data)
 
-    #     self.assertEqual(res.status_code, 200)
-    #     self.assertEqual(data['success'], True)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
 
     def test_422_deletion_an_unavailable_question(self):
         res = self.client().delete('/questions/1000')
@@ -101,7 +101,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], True)
 
     def test_adding_new_question_with_wrong_syntax_or_missing_data(self):
-        res = self.client().post('/questions', json={"question":"what is the name of the smallest planet", "answer": "Mercury"})
+        res = self.client().post('/questions', json={"question":["what is the name of the smallest planet"], "answer": "Mercury"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 422)
@@ -117,13 +117,13 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], True)
         self.assertTrue(data['questions'])
 
-    def test_searching_with_empty_result_or_404(self):
-        res = self.client().post('/questions', json={"searchTerm":"Raupe"})
+    def test_searching_with_empty_result_or_422(self):
+        res = self.client().post('/questions', json={"searchTerm":"RaupeRaupe"})
         data = json.loads(res.data)
 
-        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.status_code, 422)
         self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], "the requested resource not found.")
+        self.assertEqual(data['message'], "operation can not be processed")
 
 
     def test_retrieve_list_of_questions_based_on_given_category(self):

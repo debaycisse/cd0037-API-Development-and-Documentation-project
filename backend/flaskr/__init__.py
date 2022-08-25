@@ -151,11 +151,11 @@ def create_app(test_config=None):
         data = request.get_json()
         search_term = data.get('searchTerm', None)
         try:
-            if search_term:
+            if search_term is not None:
                 matched_result = Question.query.filter(Question.question.ilike('%'+search_term+'%')).all()
                 if len(matched_result) == 0:
                     abort(404)
-                else:
+                elif len(matched_result) > 0:
                     matched_result_formatted = paginate_questions(request, matched_result)
                     matched_result_category = paginate_current_category(request, matched_result)
                     return jsonify({
@@ -176,7 +176,7 @@ def create_app(test_config=None):
                     'success': True
                 })
         except:
-            abort(404)
+            abort(422)
     
 
     """

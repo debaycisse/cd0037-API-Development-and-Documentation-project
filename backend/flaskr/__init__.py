@@ -28,12 +28,12 @@ def paginate_current_category(request, questions):
 
     categories = [question.category for question in questions]
 
-    category_names = []
+    category_names = {}
         
     for category in categories:
-        category_names.append(Category.query.get(category).type)
+        category_names[str(Category.query.get(category).id)] = Category.query.get(category).type
 
-    return category_names[start_page:end_page]
+    return category_names
 
 def paginate_category(request, categories):
     page = request.args.get('page', 1, type=int)
@@ -42,6 +42,14 @@ def paginate_category(request, categories):
     formatted_categories = [category.format() for category in categories]
 
     return formatted_categories[start_page:end_page]
+
+def paginate_category_only(categories):
+    formatted_categories = [category.format() for category in categories]
+    processed_categories = {}
+    for category in formatted_categories:
+        processed_categories[str(category['id'])] = category['type']
+    
+    return processed_categories
 
 
 def create_app(test_config=None):
@@ -71,7 +79,7 @@ def create_app(test_config=None):
     @app.route('/categories')
     def get_categories():
         selections = Category.query.order_by(Category.id).all()
-        formatted_selections = paginate_category(request, selections)
+        formatted_selections = paginate_category_only( selections)
         if len(formatted_selections) == 0:
             abort(404)
         else:
@@ -97,7 +105,7 @@ def create_app(test_config=None):
     def get_questions():
         questions = Question.query.order_by(Question.id).all()
         categories = Category.query.order_by(Category.id).all()
-        formatted_categories = [category.format() for category in categories]
+        formatted_categories = paginate_category_only( categories)
         current_categories = paginate_current_category(request, questions)
         all_current_questions = paginate_questions(request, questions)
         if len(all_current_questions) == 0:
@@ -236,8 +244,8 @@ def create_app(test_config=None):
         all_category_based_questions = None
         formatted_all_category_based_questions = None
         try:
-            if quiz_category is not None:
-                all_category_based_questions = Question.query.filter(Question.category == quiz_category).all()
+            if quiz_category is not None and quiz_category['id'] != 0:
+                all_category_based_questions = Question.query.filter(Question.category == quiz_category['id']).all()
                 
                 formatted_all_category_based_questions = [question.format() for question in all_category_based_questions]
 
@@ -262,7 +270,7 @@ def create_app(test_config=None):
                 'question': new_random_question
             })
         except:
-            abort(500)
+            abort(400)
 
     """
     @TODO:

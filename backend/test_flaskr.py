@@ -152,13 +152,13 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], True)
         self.assertTrue(data['question'])
 
-    def test_500_sending_bad_request_playing_quiz(self):
+    def test_400_sending_bad_request_playing_quiz(self):
         res = self.client().post('/quizzes',json={"previous_questions":"what is your name"})
         data = json.loads(res.data)
 
-        self.assertEqual(res.status_code, 500)
+        self.assertEqual(res.status_code, 400)
         self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], "Internal server error.")
+        self.assertEqual(data['message'], "bad request / bad syntax")
 
 
 

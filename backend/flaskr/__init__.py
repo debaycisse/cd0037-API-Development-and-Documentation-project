@@ -180,7 +180,7 @@ def create_app(test_config=None):
         category_based_questions = None
         formatted_all_category_based_questions = None
         try:
-            if quiz_category is not None:
+            if quiz_category is not None and quiz_category['id'] != 0:
                 category_based_questions = Question.query.\
                     filter(Question.category == quiz_category['id']).\
                     all()

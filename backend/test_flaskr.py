@@ -14,9 +14,14 @@ class TriviaTestCase(unittest.TestCase):
         """Define test variables and initialize app."""
         self.app = create_app()
         self.client = self.app.test_client
-        self.database_name = "trivia_test"
-        self.database_path = "postgresql://{}@{}/{}".format('student:student', 'localhost:5432', self.database_name)
-        setup_db(self.app, self.database_path)
+        self.DB_HOSTNAME = os.getenv('DB_HOSTNAME', '127.0.0.1:5432')
+        self.DB_USERNAME = os.getenv('DB_USERNAME', 'student')
+        self.DB_PASSWORD = os.getenv('DB_PASSWORD', 'student')
+        self.DB_NAME = os.getenv('DB_NAME', 'trivia_test')
+        self.DB_PATH = 'postgresql://{}:{}@{}/{}'.\
+            format(self.DB_USERNAME, self.DB_PASSWORD, 
+                self.DB_HOSTNAME, self.DB_NAME)
+        setup_db(self.app, self.DB_PATH)
 
         # binds the app to the current context
         with self.app.app_context():
@@ -25,7 +30,11 @@ class TriviaTestCase(unittest.TestCase):
             # create all tables
             self.db.create_all()
 
-        self.new_question = {"question": "What is the name of the smallest planet", "answer": "Mercury", "category": 3, "difficulty": 3}
+        self.new_question = \
+            {"question": "What is the name of the smallest planet", 
+            "answer": "Mercury", 
+            "category": 3, 
+            "difficulty": 3}
 
     def tearDown(self):
         """Executed after reach test"""
@@ -83,6 +92,7 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
+        self.assertTrue(data['deleted_question_id'])
 
     def test_422_deletion_an_unavailable_question(self):
         res = self.client().delete('/questions/1000')

@@ -59,14 +59,6 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], False)
         self.assertTrue(data['message'], "the requested resource not found.")
 
-    def test_404_retrieving_unavailable_category(self):
-        res = self.client().get('/categories?page=1000')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 404)
-        self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], "the requested resource not found.")
-
-
 
     def test_get_paginated_questions(self):
         res = self.client().get('/questions')
